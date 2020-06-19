@@ -1,31 +1,19 @@
-stages:
-    - test
-    - deploy
+image: "ruby:2.5.1"
 
-############## DEVELOP #####################
+variables:
+  BUNDLER_VERSION: "2.1.4"
 
-deploy-develop:
-  stage: test
+before_script:
+  - apt-get update -qq && apt-get install -y -qq sqlite3 libsqlite3-dev nodejs
+  - ruby -v
+  - which ruby
+  - gem install bundler -v 2.1.4
+  - bundle install
+
+rspec:
   script:
-    - echo $CI_PROJECT_DIR
-    - /home/gitlab-runner/.rbenv/shims/bundle install
-    - /home/gitlab-runner/.rbenv/shims/bundle exec rubocop
-  stage: deploy
-  script:
-    # - apt-get update -qy
-    #- cp Procfile.dev Procfile
-    # - cp config/application.yml.sample config/application.yml
-    # - cp config/database.yml.sample config/database.yml
+    - bundle exec rspec
 
-  ## build images push to registry.heroku.com
-    - docker build -f Dockerfile --iidfile imageid.txt -t registry.heroku.com/$HEROKU_APP_DEV/web .
-    - docker login -u _ -p $HEROKU_DEV_API_KEY registry.heroku.com
-    - docker push registry.heroku.com/$HEROKU_APP_DEV/web
-    - echo "Docker Image ID is $(cat imageid.txt)"
-   ## Call api release new images
-    - |-
-      curl -X PATCH https://api.heroku.com/apps/$HEROKU_APP_DEV/formation --header "Content-Type: application/json" --header "Accept: application/vnd.heroku+json; version=3.docker-releases" --header "Authorization: Bearer ${HEROKU_DEV_API_KEY}" --data '{ "updates": [ { "type": "web", "docker_image": "'$(cat imageid.txt)'" } ] }'
-  tags:
-    - DEV
-  only:
-    - develop
+rubocop:
+  script:
+    - bundle exec rubocop
